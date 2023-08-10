@@ -13,8 +13,14 @@ export default function TabNavigation() {
   return (
     <Tab.Navigator 
         screenOptions={{
-            headerShown:false
+            headerShown:false,
+            tabBarStyle: { 
+              backgroundColor: 'black'
+            },
+            tabBarInactiveTintColor: 'gray',
+            tabBarActiveTintColor: 'white'
         }}
+        
         initialRouteName="Blank"
     >
       <Tab.Screen name="Blank" component={Blank} options={{ tabBarButton: (props) => null}}/>
