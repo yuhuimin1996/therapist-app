@@ -47,7 +47,7 @@ export default function Ask() {
       //         stopVideo();
       //         setIsRecording(false);
       //     }
-      // }, 15000);  // 15秒后自动停止
+      // }, 15000);
 
         if(videoRecordPromise) {
           const data = await videoRecordPromise;
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     //alignItems: 'center',
     paddingLeft: 120,
     paddingTop: 50,
-    backgroundColor: 'rgba(0,0,0,0.5)',  // 透明灰色背景
+    backgroundColor: 'rgba(0,0,0,0.5)',
     zIndex: 2
   },
   modalView: {
