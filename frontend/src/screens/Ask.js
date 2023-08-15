@@ -1,47 +1,51 @@
 import { SafeAreaView, StyleSheet, View, Text, TouchableOpacity, Modal,TouchableWithoutFeedback, Pressable, Animated, TextInput, Button } from 'react-native'
 import React, { useEffect, useState, useRef } from 'react'
-import { Camera, CameraType } from 'expo-camera' 
-//import { Audio } from 'expo-av'
-import { useIsFocused } from '@react-navigation/core';
-//import { FontAwesome } from '@expo/vector-icons';
-import { AntDesign } from '@expo/vector-icons';
-import storage from '../../firebaseConfig';
-import { ref, uploadBytesResumable, getDownloadURL, getStorage } from 'firebase/storage';
-import { collection, doc, setDoc, getFirestore, serverTimestamp } from "firebase/firestore";
+import { storage, db } from '../../firebaseConfig';
 
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { collection, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { Camera, CameraType } from 'expo-camera' 
+import { useIsFocused } from '@react-navigation/core';
+
+import { AntDesign } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import RecordingButton from '../components/RecordingButton';
+
+
 
 
 export default function Ask() {
   const [hasCameraPermissions, setHasCameraPermissions] = useState(false);
   const [hasMicPermissions, setHasMicPermissions] = useState(false);
 
-  const [cameraRef, setCameraRef] = useState(null);
-  //const [cameraType, setCameraType] = useState(CameraType.front);
-  const [isCameraReady, setIsCameraReady] = useState(false);
-
   const isFocused = useIsFocused();
-  const [isRecording, setIsRecording] = useState(false);
-  const [videoURI, setVideoURI] = useState(null);
+
+  const [cameraRef, setCameraRef] = useState(null);
+  
   const recordingProgress = useRef(new Animated.Value(0)).current;
+  const [isRecording, setIsRecording] = useState(false);
+  // There are two ways to stop recording: manually click / automaticlly after 15 seconds
   const [isManuallyStopped, setIsManuallyStopped] = useState(false);
 
-
-
-  const [isTitleModalVisible, setTitleModalVisible] = useState(false);
+  const [videoURI, setVideoURI] = useState(null);
+  
+  // Title-Input pop-up after recording
   const [videoTitle, setVideoTitle] = useState("");
+  const [isTitleModalVisible, setTitleModalVisible] = useState(false);
 
+  // Info pop-up modal on the top right
   const [infoIconColor, setInfoIconColor] = useState('white');
   const [isInfoModalVisible, setInfoModalVisible] = useState(false);
 
+  // Access the permission of camera/microphone on user's mobile device
   useEffect(() => {
     (async () => {
       try {
-        //Access the permission of camera on user's mobile device
+        //...Camera permission...
         const cameraStatus = await Camera.requestCameraPermissionsAsync();
         setHasCameraPermissions(cameraStatus.status == 'granted');
-        //Microphone permission
+        //...Microphone permission...
         const micStatus = await Camera.requestMicrophonePermissionsAsync();
         setHasMicPermissions(micStatus.status == 'granted');
       } catch (error) {
@@ -50,6 +54,7 @@ export default function Ask() {
     })()
   }, []);
 
+  // The progress circle animation around the recording button
   useEffect(() => {
     if (isRecording) {
         Animated.timing(recordingProgress, {
@@ -62,7 +67,7 @@ export default function Ask() {
     }
   }, [isRecording]);
 
-  //Record videos
+  // Record videos
   const recordVideo = async () => {
     if(cameraRef) {
       try{
@@ -96,7 +101,7 @@ export default function Ask() {
     }
   }
 
-  //Stop recording
+  // Stop recording
   const stopVideo = async () => {
     if(cameraRef) {
       cameraRef.stopRecording();
@@ -104,21 +109,19 @@ export default function Ask() {
       recordingProgress.setValue(0);  // reset recording progress
       console.log('stop');
 
-      setTitleModalVisible(true);
       setIsRecording(false);
       setIsManuallyStopped(false);
+
+      setTitleModalVisible(true);
     }
   }
 
-  //Upload videos to firebase
+  // Upload video to Firebase Storage
+  // Upload video metadata to Firestore database
   const uploadVideo = async () => {
     try {
+      // User must enter a title before upload
       if(!videoURI || !videoTitle) return;
-
-      //Upload video to Firebase Storage
-      //Upload video metadata to Firestore database
-      const db = getFirestore();
-      const storage = getStorage();
 
       const videosCollectionRef = collection(db, "videos");
       const newDocRef = doc(videosCollectionRef);
@@ -154,12 +157,11 @@ export default function Ask() {
     } catch (error) {
       console.error('error when upload videos: ', error);
     }
-    
   }
 
   //Discard videos
   const discardVideo = () => {
-    setTitleModalVisible(false);   // close modal
+    setTitleModalVisible(false);   // close title-input modal
     setVideoURI(null);             // discard this video
     setVideoTitle('');             // reset title to ''
   };
@@ -171,23 +173,23 @@ export default function Ask() {
     )
   }
 
+ 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.container}>
-        
+
         {isFocused ? 
             <Camera 
               ref={ref => setCameraRef(ref)}
               style={styles.camera}
               ratio={'16:9'}
               type={CameraType.front}
-              onCameraReady={() => setIsCameraReady(true)}
             />
             : null }
 
-        {/* Info icon */}
+        {/* Info icon top right*/}
         <TouchableOpacity
-          style={styles.button}
+          style={styles.infoButton}
           onPress={(event) => {
             setInfoIconColor('green');
             setInfoModalVisible(true);
@@ -199,25 +201,25 @@ export default function Ask() {
         {/* Info pop-up window */}
         {isInfoModalVisible && (
           <Modal
-            //animationType="slide"
             transparent={true}
             visible={isInfoModalVisible}
           >
             <TouchableWithoutFeedback
+            //Click anywhere except the info pop-up will close this pop-up
               onPress={() => {
                 setInfoModalVisible(false);
                 setInfoIconColor('white');
               }}
             >
-              <View style={styles.modalContainer}>
-                <TouchableWithoutFeedback>
-                  <View style={styles.modalView}>
-                    <Text style={styles.infoText}>This is not a substitute for diagnosis or treatment, but if you have a question, you can ask a therapist.</Text>
-                    <Text style={{ height: 14 }}></Text>
-                    <Text style={styles.infoText}>If you are in crisis, please call 988.</Text>
-                  </View>
-                </TouchableWithoutFeedback>
-              </View>
+            <View style={styles.infoModalContainer}>
+              <TouchableWithoutFeedback>
+                <View style={styles.infoModalView}>
+                  <Text style={styles.infoText}>This is not a substitute for diagnosis or treatment, but if you have a question, you can ask a therapist.</Text>
+                  <Text style={{ height: 14 }}></Text>
+                  <Text style={styles.infoText}>If you are in crisis, please call 988.</Text>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
             </TouchableWithoutFeedback>
           </Modal>
         )}
@@ -229,46 +231,58 @@ export default function Ask() {
               isRecording={isRecording}
               progress={recordingProgress}
               onPress={() => {
-                if(isRecording) {
-                  setIsManuallyStopped(true);
+                if(isRecording) {// When is recording, press means manually stop
+                  setIsManuallyStopped(true); 
                   stopVideo();
-                } else {
+                } else {// When is not recording, press means start recording
                   setIsManuallyStopped(false);
                   recordVideo();
                 }
-                setIsRecording(!isRecording);
+                setIsRecording(!isRecording); // Reset IsRecording
               }}
             />
           </View>
         </View>
           
           
-        {/* Pop up window after stop recording */}
+        {/* Pop up title-input window after stop recording */}
         {isTitleModalVisible && (
           <Modal
             transparent={true}
             visible={isTitleModalVisible}
           >
-            <View style={styles.modalTitleContainer}>
+            <View style={styles.titleModalContainer}>
               <TouchableOpacity 
                 style={[styles.discardButton, { zIndex: 3 }]} 
                 onPress={discardVideo}
               >
-                <Text style={styles.discardButtonText}>Discard</Text>
+                <MaterialIcons
+                  name="close"
+                  size={30}
+                  color="white"
+                />
               </TouchableOpacity>
 
-              <View style={styles.modalTitleView}>
+              <View style={styles.titleModalView}>
                 <TextInput
-                  placeholder="Title of your question"
+                  placeholder="Title of your question..."
+                  placeholderTextColor="white" 
                   value={videoTitle}
                   onChangeText={text => setVideoTitle(text)}
+                  multiline={true}
+                  maxLength={40}
                   style={styles.titleInput}
                 />
-                <Button title="Submit" onPress={() => {
-                  uploadVideo();
-                  setTitleModalVisible(false);
-                  setVideoTitle('');
-                }} />
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={() => { 
+                    uploadVideo();
+                    setTitleModalVisible(false);
+                    setVideoTitle('');
+                  }}
+                >
+                  <Text style={styles.sendButtonText}>Send it</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Modal>
@@ -285,12 +299,13 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative'
   },
-  
   camera: {
     flex: 1,
     backgroundColor: 'black',
     aspectRatio: 9 / 16,
   },
+
+  // Recording button
   bottomBarContainer: {
     position: 'absolute',
     bottom: 0,
@@ -311,20 +326,24 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 30
   },
-  button: {
+
+  // Info icon on top right
+  infoButton: {
     position: 'absolute',
     top: 10,
     right: 10,
     zIndex: 1
   },
-  modalContainer: {
+
+  // Info pop-up when click info icon
+  infoModalContainer: {
     flex: 1,
     paddingLeft: 120,
     paddingTop: 50,
     backgroundColor: 'rgba(0,0,0,0.5)',
     zIndex: 2
   },
-  modalView: {
+  infoModalView: {
     width: 220,
     height: 160,
     backgroundColor: 'white',
@@ -336,39 +355,59 @@ const styles = StyleSheet.create({
   infoText: {
     fontWeight: 'bold'
   },
-  modalTitleContainer: {
+
+  // Pop-up after stop recording: 
+  // Title-input
+  titleModalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)'
 },
-modalTitleView: {
-    width: 300,
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-},
-titleInput: {
+  titleModalView: {
+      width: 320,
+      padding: 20,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center'
+  },
+  titleInput: {
     width: '100%',
-    height: 40,
-    padding: 10,
-    borderColor: 'gray',
+    height: 70, 
+    paddingTop: 10, 
+    paddingLeft: 10,
+    paddingHorizontal: 5,
+    fontSize: 24,
+    borderColor: 'white',
+    borderRadius: 20,
     borderWidth: 1,
-    marginBottom: 20,
-},
-discardButton: {
-  position: 'absolute',
-  top: 60,
-  left: 10,
-  padding: 5,
-  backgroundColor: 'red',
-  borderRadius: 4
-},
-discardButtonText: {
-  color: 'white',
-  fontWeight: 'bold'
-}
-
+    marginBottom: 25,
+    color: 'white',
+    backgroundColor: 'rgba(105,105,105, 0.5)'
+  },
+  // X button to discard this video
+  discardButton: {
+    position: 'absolute',
+    top: 60,
+    left: 10,
+    padding: 5,
+    borderRadius: 4
+  },
+  // send button to upload this video
+  sendButton: {
+    backgroundColor: '#9ACD32',
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    marginTop: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 50,
+    width: '60%',
+    height: 60
+  },
+  sendButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 25
+  }
 });

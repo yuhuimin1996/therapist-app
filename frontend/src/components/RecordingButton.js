@@ -11,7 +11,6 @@ export default function RecordingButton({ isRecording, progress, onPress }) {
   const radius = (size - strokeWidth) / 2;
   const innerRadius = radius - (strokeWidth / 2);
   const circumference = 2 * Math.PI * radius;
-
   
   const dashOffset = Animated.subtract(circumference, Animated.multiply(progress, circumference));
 

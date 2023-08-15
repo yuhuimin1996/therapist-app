@@ -1,7 +1,7 @@
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import TabNavigation from './src/components/TabNavigation';
 import { NavigationContainer } from '@react-navigation/native';
+
 
 
 
